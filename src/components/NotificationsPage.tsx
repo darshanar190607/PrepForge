@@ -1,6 +1,6 @@
 import React from 'react';
 import { Notification } from '../types';
-import { Bell, Megaphone, UserCheck, Calendar, Check, Trash2, ShieldAlert } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, BookOpen, Award, ShieldCheck, TrendingUp, Info } from 'lucide-react';
 
 interface NotificationsPageProps {
   notifications: Notification[];
@@ -9,146 +9,94 @@ interface NotificationsPageProps {
   onClearNotifications: () => void;
 }
 
-export default function NotificationsPage({
-  notifications,
-  onMarkAsRead,
-  onMarkAllAsRead,
-  onClearNotifications
-}: NotificationsPageProps) {
-  
-  const getIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'challenge':
-        return <Calendar size={18} className="text-[#5C6FFF]" />;
-      case 'announcement':
-        return <Megaphone size={18} className="text-amber-500" />;
-      case 'approval':
-        return <UserCheck size={18} className="text-[#22C55E]" />;
-      default:
-        return <Bell size={18} className="text-[#888888]" />;
-    }
-  };
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  quiz:       { icon: <BookOpen size={14} />,    color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  result:     { icon: <TrendingUp size={14} />,  color: 'text-green-600',  bg: 'bg-green-50'  },
+  badge:      { icon: <Award size={14} />,        color: 'text-amber-600',  bg: 'bg-amber-50'  },
+  approval:   { icon: <ShieldCheck size={14} />, color: 'text-violet-600', bg: 'bg-violet-50' },
+  leaderboard:{ icon: <Award size={14} />,        color: 'text-rose-600',   bg: 'bg-rose-50'   },
+  general:    { icon: <Info size={14} />,         color: 'text-slate-600',  bg: 'bg-slate-100' },
+};
 
-  const getTimeString = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
-    });
-  };
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+export default function NotificationsPage({ notifications, onMarkAsRead, onMarkAllAsRead, onClearNotifications }: NotificationsPageProps) {
+  const unread = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="space-y-6" id="notifications-page-root">
-      {/* Header Panel */}
-      <div className="bg-[#FFFFFF] border border-[#E2E2E2] p-5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4" id="notifications-header">
+    <div className="space-y-5 max-w-2xl mx-auto">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-display font-bold text-[#111111]" id="notifications-title">
-            Alert Logs & Live Notifications
-          </h2>
-          <p className="text-[#888888] text-xs mt-1">
-            Stay up to date with historical milestones, daily tasks, deadline warnings, notice board logs, and member workspace arrivals.
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Bell size={20} className="text-indigo-500" />
+            Notifications
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {unread > 0 ? `${unread} unread notification${unread > 1 ? 's' : ''}` : 'All caught up!'}
           </p>
         </div>
-
-        <div className="flex gap-2 shrink-0">
-          <button
-            onClick={onMarkAllAsRead}
-            disabled={notifications.every(n => n.read)}
-            className="px-3.5 py-1.5 bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] hover:bg-[#FFFFFF] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            id="mark-all-read-btn"
-          >
-            <Check size={14} />
-            <span>Mark All Read</span>
-          </button>
-          
-          <button
-            onClick={onClearNotifications}
-            disabled={notifications.length === 0}
-            className="px-3.5 py-1.5 bg-rose-50 border border-rose-100 text-[#EF4444] hover:bg-rose-100/50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            id="clear-all-notifs-btn"
-          >
-            <Trash2 size={14} />
-            <span>Clear Logs</span>
-          </button>
+        <div className="flex gap-2">
+          {unread > 0 && (
+            <button onClick={onMarkAllAsRead}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50 transition cursor-pointer">
+              <CheckCheck size={13} /> Mark all read
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button onClick={() => { if (confirm('Clear all notifications?')) onClearNotifications(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 text-xs font-semibold rounded-lg transition cursor-pointer">
+              <Trash2 size={13} /> Clear all
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Alerts Feed */}
-      <div className="bg-[#FFFFFF] border border-[#E2E2E2] rounded-lg shadow-sm overflow-hidden" id="notifications-list-container">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         {notifications.length === 0 ? (
-          <div className="p-16 text-center text-[#888888]" id="no-notifications-fallback">
-            <div className="w-12 h-12 rounded-full bg-[#F7F7F7] border border-[#E2E2E2] flex items-center justify-center mx-auto mb-4 text-[#888888]">
-              <Bell size={20} />
-            </div>
-            <h3 className="text-sm font-display font-bold text-[#111111]">No Notifications Yet</h3>
-            <p className="text-xs text-[#888888] mt-1 max-w-sm mx-auto leading-relaxed">
-              You are completely caught up! We will alert you here as soon as a coordinator issues new challenges or makes batch announcements.
-            </p>
+          <div className="p-12 text-center text-slate-400">
+            <Bell size={32} className="mx-auto mb-3 opacity-20" />
+            <p className="text-sm font-medium">No notifications yet</p>
+            <p className="text-xs mt-1">You'll be notified when quizzes are published, results are ready, or badges are earned.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#E2E2E2]" id="notifications-feed">
-            {notifications.map(notif => (
-              <div 
-                key={notif.id} 
-                className={`p-5 flex items-start gap-4 transition duration-150 relative ${
-                  notif.read ? 'bg-[#FFFFFF]' : 'bg-indigo-50/10'
-                }`}
-                id={`notif-item-${notif.id}`}
-              >
-                {/* Unread Glowing Dot */}
-                {!notif.read && (
-                  <span className="absolute top-5 left-2.5 w-1.5 h-1.5 rounded-full bg-[#5C6FFF] animate-pulse" />
-                )}
-
-                {/* Category Icon */}
-                <div className="w-9 h-9 rounded-lg bg-[#F7F7F7] border border-[#E2E2E2] flex items-center justify-center shrink-0">
-                  {getIcon(notif.type)}
-                </div>
-
-                {/* Text Context */}
-                <div className="flex-1 space-y-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <h4 className={`text-sm text-[#111111] leading-none ${notif.read ? 'font-medium' : 'font-bold'}`}>
-                      {notif.title}
-                    </h4>
-                    <span className="text-[10px] text-[#888888] font-mono whitespace-nowrap">
-                      {getTimeString(notif.createdAt)}
-                    </span>
+          <div className="divide-y divide-slate-100">
+            {notifications.map(n => {
+              const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.general;
+              return (
+                <div key={n.id}
+                  onClick={() => !n.read && onMarkAsRead(n.id)}
+                  className={`flex gap-4 px-5 py-4 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/40' : ''}`}>
+                  {/* Icon */}
+                  <div className={`w-8 h-8 rounded-full ${cfg.bg} ${cfg.color} flex items-center justify-center shrink-0 mt-0.5`}>
+                    {cfg.icon}
                   </div>
-                  
-                  <p className="text-xs text-[#888888] leading-relaxed pr-12">
-                    {notif.content}
-                  </p>
-                </div>
 
-                {/* Individual Action item */}
-                {!notif.read && (
-                  <button
-                    onClick={() => onMarkAsRead(notif.id)}
-                    className="p-1 text-[#888888] hover:text-[#22C55E] hover:bg-[#F7F7F7] border border-transparent hover:border-[#E2E2E2] rounded transition cursor-pointer"
-                    title="Mark as Read"
-                  >
-                    <Check size={14} />
-                  </button>
-                )}
-              </div>
-            ))}
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`text-sm font-semibold leading-snug ${!n.read ? 'text-slate-900' : 'text-slate-700'}`}>
+                        {n.title}
+                      </p>
+                      <span className="text-[10px] text-slate-400 shrink-0 mt-0.5">{timeAgo(n.createdAt)}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{n.content}</p>
+                  </div>
+
+                  {/* Unread dot */}
+                  {!n.read && <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-2" />}
+                </div>
+              );
+            })}
           </div>
         )}
-      </div>
-
-      {/* Static Tips block */}
-      <div className="bg-[#F7F7F7] border border-[#E2E2E2] p-4 rounded-lg flex items-start gap-3">
-        <ShieldAlert size={16} className="text-[#5C6FFF] shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <span className="text-xs font-bold text-[#111111] block">Verification & Real-Time Alerts</span>
-          <p className="text-[11px] text-[#888888] leading-relaxed">
-            By default, all notifications logged here persist locally in the session. You can filter and dismiss individual entries or clear the entire alert register for a distraction-free experience.
-          </p>
-        </div>
       </div>
     </div>
   );

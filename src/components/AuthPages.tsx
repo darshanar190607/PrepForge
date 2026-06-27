@@ -1,272 +1,241 @@
 import React, { useState } from 'react';
-import { Hammer } from 'lucide-react';
-import { User } from '../types';
+import { Hammer, Eye, EyeOff, BookOpen } from 'lucide-react';
 
 interface AuthPagesProps {
   onLogin: (email: string, password: string) => Promise<any>;
-  onRegisterRequest: (name: string, email: string, password: string, groupCode: string) => Promise<any>;
+  onRegisterRequest: (name: string, email: string, password: string, groupCode: string, department?: string, year?: string) => Promise<any>;
 }
 
 export default function AuthPages({ onLogin, onRegisterRequest }: AuthPagesProps) {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  
-  // Login form state
-  const [loginEmail, setLoginEmail] = useState('darshan.ar2024cce@sece.ac.in'); // Pre-fill with requested admin
-  const [loginPassword, setLoginPassword] = useState('admin123'); // Default seeded admin password
-  const [loginError, setLoginError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
-  // Register form state
+  // Login
+  const [loginEmail, setLoginEmail] = useState('darshan.ar2024cce@sece.ac.in');
+  const [loginPassword, setLoginPassword] = useState('admin123');
+  const [loginError, setLoginError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Register
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regGroupCode, setRegGroupCode] = useState('');
-  const [isSubmittedSuccess, setIsSubmittedSuccess] = useState(false);
-  const [registerError, setRegisterError] = useState('');
+  const [regDept, setRegDept] = useState('CCE');
+  const [regYear, setRegYear] = useState('3rd');
+  const [regError, setRegError] = useState('');
+  const [regSuccess, setRegSuccess] = useState(false);
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      setLoginError('Please enter both email and password.');
-      return;
-    }
-
+    if (!loginEmail.trim() || !loginPassword.trim()) { setLoginError('Enter email and password.'); return; }
     try {
-      setIsSubmitting(true);
-      setLoginError('');
+      setSubmitting(true); setLoginError('');
       await onLogin(loginEmail, loginPassword);
     } catch (err: any) {
       setLoginError(err.message || 'Invalid credentials.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName.trim() || !regEmail.trim() || !regPassword.trim() || !regGroupCode.trim()) {
-      setRegisterError('All fields including Group Code are strictly required.');
-      return;
+      setRegError('All fields are required.'); return;
     }
-
-    if (regGroupCode.trim() !== 'CCEWIN') {
-      setRegisterError('Invalid Group Code. Please check with your coordinator.');
-      return;
+    if (regGroupCode.trim().toUpperCase() !== 'CCEWIN') {
+      setRegError('Invalid Group Code. Contact your admin.'); return;
     }
-
     try {
-      setIsSubmitting(true);
-      setRegisterError('');
-      await onRegisterRequest(regName, regEmail, regPassword, regGroupCode);
-      setIsSubmittedSuccess(true);
+      setSubmitting(true); setRegError('');
+      await onRegisterRequest(regName, regEmail, regPassword, regGroupCode, regDept, regYear);
+      setRegSuccess(true);
     } catch (err: any) {
-      setRegisterError(err.message || 'Registration failed.');
-    } finally {
-      setIsSubmitting(false);
-    }
+      setRegError(err.message || 'Registration failed.');
+    } finally { setSubmitting(false); }
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center p-6 relative select-none font-sans" id="auth-pages-container">
-      {/* Visual Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <div className="w-10 h-10 bg-[#5C6FFF] rounded-lg flex items-center justify-center font-bold text-white shadow-sm">
-          <Hammer size={20} className="text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100 flex flex-col items-center justify-center p-6" id="auth-container">
+      {/* Brand */}
+      <div className="mb-8 flex items-center gap-3">
+        <div className="w-11 h-11 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+          <BookOpen size={22} className="text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-bold text-[#111111] tracking-tight">PrepForge</h1>
-          <span className="text-[10px] text-[#888888] font-mono tracking-widest uppercase font-bold">Placement Preparation Platform</span>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">PrepForge</h1>
+          <span className="text-[10px] text-indigo-500 font-semibold tracking-widest uppercase font-mono">Quiz & Learning Platform</span>
         </div>
       </div>
 
-      {/* Main Auth Card */}
-      <div className="w-full max-w-md bg-[#FFFFFF] border border-[#E2E2E2] rounded-lg p-8 shadow-sm" id="auth-card">
-        {!isRegisterMode ? (
-          /* LOGIN MODE */
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-lg font-display font-bold text-[#111111]">Welcome Back</h2>
-              <p className="text-[#888888] text-xs">Sign in to sync your challenges, streaks, and peer reviews.</p>
-            </div>
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden" id="auth-card">
+        {/* Accent bar */}
+        <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-400" />
 
-            {loginError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-[#EF4444] text-xs font-mono rounded-lg">
-                ⚠️ {loginError}
-              </div>
-            )}
-
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#111111] uppercase tracking-wider block font-mono">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="name@college.edu"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] px-3 py-2 text-xs rounded outline-none focus:border-[#5C6FFF] transition font-sans"
-                  id="login-email-input"
-                />
+        <div className="p-8">
+          {!isRegisterMode ? (
+            /* === LOGIN === */
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Welcome back</h2>
+                <p className="text-slate-500 text-sm mt-0.5">Sign in to access your quizzes and results.</p>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-[#111111] uppercase tracking-wider block font-mono">Password</label>
-                  <span className="text-[10px] text-[#888888] hover:underline cursor-pointer">Forgot Password?</span>
+              {loginError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-medium">
+                  {loginError}
                 </div>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] px-3 py-2 text-xs rounded outline-none focus:border-[#5C6FFF] transition font-sans"
-                  id="login-password-input"
-                />
-              </div>
+              )}
 
-              <button
-                type="submit"
-                className="w-full py-2 px-4 bg-[#5C6FFF] hover:bg-[#5C6FFF]/90 text-white text-xs font-bold rounded tracking-wide transition cursor-pointer"
-                id="login-submit-btn"
-              >
-                Login
-              </button>
-            </form>
-
-            <div className="pt-2 text-center text-xs">
-              <span className="text-[#888888]">New to the platform? </span>
-              <button
-                onClick={() => {
-                  setIsRegisterMode(true);
-                  setIsSubmittedSuccess(false);
-                }}
-                className="text-[#5C6FFF] font-bold hover:underline cursor-pointer"
-              >
-                Join a Group
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* REGISTER / JOIN MODE */
-          <div className="space-y-6">
-            {!isSubmittedSuccess ? (
-              <>
-                <div className="space-y-1">
-                  <h2 className="text-lg font-display font-bold text-[#111111]">Join Placement Group</h2>
-                  <p className="text-[#888888] text-xs">Create your student record and provide your group join code.</p>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Email</label>
+                  <input
+                    id="login-email"
+                    type="email"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+                    placeholder="email@college.edu"
+                  />
                 </div>
-
-                {registerError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-[#EF4444] text-xs font-mono rounded-lg">
-                    ⚠️ {registerError}
-                  </div>
-                )}
-
-                <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-[#111111] uppercase tracking-wider block font-mono">Full Name</label>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Password</label>
+                  <div className="relative">
                     <input
-                      type="text"
-                      placeholder="e.g. Devendra Singh"
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      className="w-full bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] px-3 py-2 text-xs rounded outline-none focus:border-[#5C6FFF] transition font-sans"
-                      id="register-name-input"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-[#111111] uppercase tracking-wider block font-mono">Email Address</label>
-                    <input
-                      type="email"
-                      placeholder="dev.singh@student.edu"
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      className="w-full bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] px-3 py-2 text-xs rounded outline-none focus:border-[#5C6FFF] transition font-sans"
-                      id="register-email-input"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-[#111111] uppercase tracking-wider block font-mono">Password</label>
-                    <input
-                      type="password"
+                      id="login-password"
+                      type={showPass ? 'text' : 'password'}
+                      value={loginPassword}
+                      onChange={e => setLoginPassword(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 pr-10 text-sm rounded-lg outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
                       placeholder="••••••••"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      className="w-full bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] px-3 py-2 text-xs rounded outline-none focus:border-[#5C6FFF] transition font-sans"
-                      id="register-password-input"
                     />
+                    <button type="button" onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-[#111111] uppercase tracking-wider block font-mono">Group Code</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. CCEWIN"
-                      value={regGroupCode}
-                      onChange={(e) => setRegGroupCode(e.target.value)}
-                      className="w-full bg-[#F7F7F7] border border-[#E2E2E2] text-[#111111] px-3 py-2 text-xs rounded outline-none focus:border-[#5C6FFF] transition font-sans"
-                      id="register-groupcode-input"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2 px-4 bg-[#5C6FFF] hover:bg-[#5C6FFF]/90 text-white text-xs font-bold rounded tracking-wide transition cursor-pointer"
-                    id="register-submit-btn"
-                  >
-                    Send Enrollment Request
-                  </button>
-                </form>
-
-                <div className="pt-2 text-center text-xs">
-                  <span className="text-[#888888]">Already requested? </span>
-                  <button
-                    onClick={() => setIsRegisterMode(false)}
-                    className="text-[#5C6FFF] font-bold hover:underline cursor-pointer"
-                  >
-                    Go to Login
-                  </button>
                 </div>
-              </>
-            ) : (
-              /* REGISTER SUCCESS STATE */
-              <div className="text-center space-y-5 py-4" id="register-success-state">
-                <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-full flex items-center justify-center mx-auto">
-                  ⏳
-                </div>
-                
-                <div className="space-y-1">
-                  <h3 className="text-base font-display font-bold text-[#111111]">Request Sent Successfully</h3>
-                  <p className="text-[#EF4444] text-xs font-semibold uppercase font-mono tracking-wider">Waiting for Admin Approval</p>
-                </div>
-                
-                <p className="text-xs text-[#888888] leading-relaxed">
-                  Hi <strong>{regName}</strong>, your enrollment request has been registered under <strong>{regGroupCode}</strong>. Once the placement administrator reviews and approves, your account will become active.
-                </p>
-
-                 <div className="bg-slate-50 p-3.5 rounded border border-[#E2E2E2] text-left text-xs space-y-1 text-[#888888]">
-                  <div className="font-bold text-[#111111] mb-1">How to test approval:</div>
-                  <div>1. Log in using the admin account: <strong className="text-[#111111]">darshan.ar2024cce@sece.ac.in</strong> (password: <strong className="text-[#111111]">admin123</strong>)</div>
-                  <div>2. Open the <strong>Cohort Management (Manage Cohort)</strong> page in the sidebar.</div>
-                  <div>3. Click the <strong>Join Requests</strong> tab and approve your user!</div>
-                </div>
-
                 <button
-                  onClick={() => setIsRegisterMode(false)}
-                  className="w-full py-2 bg-[#111111] hover:bg-[#111111]/90 text-white text-xs font-bold rounded transition cursor-pointer"
+                  id="login-btn"
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition cursor-pointer"
                 >
-                  Return to Login
+                  {submitting ? 'Signing in...' : 'Sign In'}
                 </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              </form>
 
-      {/* Simulator Guidance Footer */}
-      <div className="mt-8 text-[11px] text-[#888888] text-center max-w-sm leading-relaxed" id="auth-hint">
-        <span className="font-bold text-[#111111]">Demo tip:</span> You can login with admin credentials <strong className="text-[#111111]">darshan.ar2024cce@sece.ac.in</strong> / <strong className="text-[#111111]">admin123</strong>, or classmate email <strong className="text-[#111111]">priya.patel@student.edu</strong> / <strong className="text-[#111111]">password123</strong>.
+              <p className="text-center text-sm text-slate-500">
+                New student?{' '}
+                <button onClick={() => { setIsRegisterMode(true); setRegSuccess(false); }}
+                  className="text-indigo-600 font-semibold hover:underline cursor-pointer">
+                  Request Access
+                </button>
+              </p>
+
+              {/* Demo hint */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 space-y-1">
+                <div className="font-semibold text-slate-700">Demo credentials</div>
+                <div>Admin: <span className="font-mono text-slate-900">darshan.ar2024cce@sece.ac.in</span> / <span className="font-mono">admin123</span></div>
+                <div>Student: <span className="font-mono text-slate-900">priya.patel@student.edu</span> / <span className="font-mono">password123</span></div>
+              </div>
+            </div>
+          ) : (
+            /* === REGISTER === */
+            <div className="space-y-6">
+              {!regSuccess ? (
+                <>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Request Access</h2>
+                    <p className="text-slate-500 text-sm mt-0.5">Enter your details and department group code.</p>
+                  </div>
+
+                  {regError && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-medium">
+                      {regError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleRegister} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Full Name</label>
+                      <input id="reg-name" type="text" value={regName} onChange={e => setRegName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+                        placeholder="Your full name" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Email</label>
+                      <input id="reg-email" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+                        placeholder="name@college.edu" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Department</label>
+                        <select value={regDept} onChange={e => setRegDept(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 transition">
+                          <option>CCE</option><option>CSE</option><option>ECE</option><option>EEE</option><option>MECH</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Year</label>
+                        <select value={regYear} onChange={e => setRegYear(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 transition">
+                          <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Password</label>
+                      <input id="reg-password" type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition"
+                        placeholder="Choose a strong password" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Group Code</label>
+                      <input id="reg-groupcode" type="text" value={regGroupCode} onChange={e => setRegGroupCode(e.target.value.toUpperCase())}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2.5 text-sm rounded-lg outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition font-mono tracking-widest"
+                        placeholder="e.g. CCEWIN" />
+                    </div>
+                    <button id="reg-btn" type="submit" disabled={submitting}
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition cursor-pointer">
+                      {submitting ? 'Sending Request...' : 'Send Enrollment Request'}
+                    </button>
+                  </form>
+
+                  <p className="text-center text-sm text-slate-500">
+                    Already registered?{' '}
+                    <button onClick={() => setIsRegisterMode(false)}
+                      className="text-indigo-600 font-semibold hover:underline cursor-pointer">Sign In</button>
+                  </p>
+                </>
+              ) : (
+                /* Success */
+                <div className="text-center py-4 space-y-5" id="reg-success">
+                  <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-2xl">⏳</div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Request Submitted!</h3>
+                    <p className="text-amber-600 text-xs font-semibold uppercase tracking-wider mt-1">Awaiting Admin Approval</p>
+                  </div>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Hi <strong className="text-slate-900">{regName}</strong>, your request has been submitted.
+                    An admin will review and approve your account. You'll be able to access quizzes once approved.
+                  </p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 text-xs text-slate-500 text-left space-y-1.5">
+                    <p className="font-semibold text-slate-700">What happens next?</p>
+                    <p>1. Admin reviews your request in the Student Management panel.</p>
+                    <p>2. Once approved, you'll receive access to all published quizzes.</p>
+                    <p>3. Login with your registered email and password.</p>
+                  </div>
+                  <button onClick={() => setIsRegisterMode(false)}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition cursor-pointer">
+                    Return to Login
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

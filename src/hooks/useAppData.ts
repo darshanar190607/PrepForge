@@ -1,54 +1,65 @@
 import { useState, useEffect, useCallback } from 'react';
-import { User, Problem, Submission, Announcement, Notification, Contribution } from '../types';
+import {
+  User, Quiz, QuizAttempt, QuestionResponse, Notification,
+  LeaderboardEntry, StudentAnalytics, AdminAnalytics, StudyCoach,
+  AIExplanation, Question, ParsedQuestion, QuizFormData
+} from '../types';
 import { api, getAuthToken, setAuthToken } from '../api';
 
 export function useAppData() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [myAttempts, setMyAttempts] = useState<QuizAttempt[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [contributions, setContributions] = useState<Contribution[]>([]);
-  
-  const [loading, setLoading] = useState<boolean>(true);
-  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [studentAnalytics, setStudentAnalytics] = useState<StudentAnalytics | null>(null);
+  const [adminAnalytics, setAdminAnalytics] = useState<AdminAnalytics | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMainData = useCallback(async (role: 'admin' | 'member') => {
+  // ------------------------------------------------------------------
+  // Core data fetch
+  // ------------------------------------------------------------------
+  const fetchMainData = useCallback(async (role: 'admin' | 'student', userId: string) => {
     try {
       setLoading(true);
-      
-      // Fetch problems, submissions, announcements, notifications, contributions in parallel
-      const [probsData, subsData, annsData, notifsData, contribsData] = await Promise.all([
-        api.get('/api/problems'),
-        api.get('/api/submissions'),
-        api.get('/api/announcements'),
+      const [quizzesData, attemptsData, notifsData, lbData] = await Promise.all([
+        api.get('/api/quizzes'),
+        api.get('/api/attempts'),
         api.get('/api/notifications'),
-        api.get('/api/contributions'),
+        api.get('/api/leaderboard'),
       ]);
-
-      setProblems(probsData);
-      setSubmissions(subsData);
-      setAnnouncements(annsData);
+      setQuizzes(quizzesData);
+      setMyAttempts(attemptsData);
       setNotifications(notifsData);
-      setContributions(contribsData);
+      setLeaderboard(lbData);
 
-      // Fetch all users list if admin
       if (role === 'admin') {
-        const usersData = await api.get('/api/users');
+        const [usersData, adminAnalyticsData] = await Promise.all([
+          api.get('/api/users'),
+          api.get('/api/analytics/admin'),
+        ]);
         setUsers(usersData);
+        setAdminAnalytics(adminAnalyticsData);
+      } else {
+        const analyticsData = await api.get(`/api/analytics/student/${userId}`);
+        setStudentAnalytics(analyticsData);
       }
-      
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching data:', err);
-      setError(err.message || 'Failed to load workspace data');
+      console.error('Fetch error:', err);
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // ------------------------------------------------------------------
+  // Auth check on mount
+  // ------------------------------------------------------------------
   const checkAuth = useCallback(async () => {
     const token = getAuthToken();
     if (!token) {
@@ -57,18 +68,14 @@ export function useAppData() {
       setLoading(false);
       return;
     }
-
     try {
       setAuthChecking(true);
       const res = await api.get('/api/auth/me');
       setCurrentUser(res.user);
-      
-      // Load workspace data for active users
       if (res.user.status === 'active') {
-        await fetchMainData(res.user.role);
+        await fetchMainData(res.user.role, res.user.id);
       }
-    } catch (err) {
-      console.error('Auth verification failed, clearing session:', err);
+    } catch {
       setAuthToken(null);
       setCurrentUser(null);
     } finally {
@@ -76,237 +83,181 @@ export function useAppData() {
     }
   }, [fetchMainData]);
 
-  // Check auth on mount
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  useEffect(() => { checkAuth(); }, [checkAuth]);
 
-  // -------------------------------------------------------------
-  // MUTATION WORKFLOWS
-  // -------------------------------------------------------------
-
+  // ------------------------------------------------------------------
+  // Auth mutations
+  // ------------------------------------------------------------------
   const login = async (email: string, password: string): Promise<User> => {
-    setError(null);
-    try {
-      const data = await api.post('/api/auth/login', { email, password });
-      setAuthToken(data.token);
-      setCurrentUser(data.user);
-      
-      if (data.user.status === 'active') {
-        await fetchMainData(data.user.role);
-      }
-      return data.user;
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-      throw err;
+    const data = await api.post('/api/auth/login', { email, password });
+    setAuthToken(data.token);
+    setCurrentUser(data.user);
+    if (data.user.status === 'active') {
+      await fetchMainData(data.user.role, data.user.id);
     }
+    return data.user;
   };
 
-  const register = async (name: string, email: string, password: string, groupCode: string): Promise<void> => {
-    setError(null);
-    try {
-      await api.post('/api/auth/register', { name, email, password, groupCode });
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
-      throw err;
-    }
+  const register = async (
+    name: string, email: string, password: string,
+    groupCode: string, department?: string, year?: string
+  ): Promise<void> => {
+    await api.post('/api/auth/register', { name, email, password, groupCode, department, year });
   };
 
   const logout = () => {
     setAuthToken(null);
     setCurrentUser(null);
     setUsers([]);
-    setProblems([]);
-    setSubmissions([]);
-    setAnnouncements([]);
+    setQuizzes([]);
+    setMyAttempts([]);
     setNotifications([]);
-    setContributions([]);
+    setLeaderboard([]);
+    setStudentAnalytics(null);
+    setAdminAnalytics(null);
   };
 
+  // ------------------------------------------------------------------
+  // User management (admin)
+  // ------------------------------------------------------------------
   const approveUser = async (userId: string) => {
-    try {
-      await api.patch(`/api/users/${userId}/approve`);
-      
-      // Update local users status
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'active', streak: 1 } : u));
-      
-      // Fetch latest submissions, notifications, etc.
-      if (currentUser) {
-        await fetchMainData(currentUser.role);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to approve user');
-      throw err;
-    }
+    await api.patch(`/api/users/${userId}/approve`);
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'active' } : u));
+    if (currentUser) await fetchMainData(currentUser.role, currentUser.id);
   };
 
   const rejectUser = async (userId: string) => {
-    try {
-      await api.delete(`/api/users/${userId}`);
-      setUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (err: any) {
-      setError(err.message || 'Failed to reject user');
-      throw err;
-    }
+    await api.patch(`/api/users/${userId}/reject`);
+    setUsers(prev => prev.filter(u => u.id !== userId));
   };
 
   const toggleAdminRole = async (userId: string) => {
-    try {
-      await api.patch(`/api/users/${userId}/role`);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: u.role === 'admin' ? 'member' : 'admin' } : u));
-    } catch (err: any) {
-      setError(err.message || 'Failed to toggle admin role');
-      throw err;
-    }
+    await api.patch(`/api/users/${userId}/role`);
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? { ...u, role: u.role === 'admin' ? 'student' : 'admin' } : u
+    ));
   };
 
   const removeUser = async (userId: string) => {
-    try {
-      await api.delete(`/api/users/${userId}`);
-      setUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (err: any) {
-      setError(err.message || 'Failed to remove user');
-      throw err;
-    }
+    await api.delete(`/api/users/${userId}`);
+    setUsers(prev => prev.filter(u => u.id !== userId));
   };
 
-  const publishChallenge = async (problemData: {
-    title: string;
-    description: string;
-    topic: string;
-    pattern: string;
-    difficulty: 'Easy' | 'Medium' | 'Hard';
-    deadline: string;
-    starterCode: Record<string, string>;
-    testCases: any[];
-    companyTags: string[];
-  }) => {
-    try {
-      await api.post('/api/problems', problemData);
-      if (currentUser) {
-        await fetchMainData(currentUser.role);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to publish challenge');
-      throw err;
-    }
+  // ------------------------------------------------------------------
+  // Quiz management (admin)
+  // ------------------------------------------------------------------
+  const createQuiz = async (formData: QuizFormData): Promise<{ id: string }> => {
+    const result = await api.post('/api/quizzes', formData);
+    if (currentUser) await fetchMainData(currentUser.role, currentUser.id);
+    return result;
   };
 
-  const submitSolution = async (problemId: string, code: string, language: string, explanation: string) => {
-    try {
-      const newSub = await api.post('/api/submissions', { problemId, code, language, explanation });
-      
-      // Update local submissions list
-      setSubmissions(prev => [newSub, ...prev]);
-
-      // Refresh data to update solved counts and streaks
-      if (currentUser) {
-        // Refetch user profile to get updated solvedCount/streak
-        const res = await api.get('/api/auth/me');
-        setCurrentUser(res.user);
-        
-        await fetchMainData(currentUser.role);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit solution');
-      throw err;
-    }
+  const publishQuiz = async (quizId: string) => {
+    await api.patch(`/api/quizzes/${quizId}/publish`);
+    setQuizzes(prev => prev.map(q => q.id === quizId ? { ...q, status: 'published' } : q));
   };
 
-  const postAnnouncement = async (announcementData: {
-    title: string;
-    content: string;
-    category: 'important' | 'general' | 'resource';
-  }) => {
-    try {
-      await api.post('/api/announcements', announcementData);
-      if (currentUser) {
-        await fetchMainData(currentUser.role);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to post announcement');
-      throw err;
-    }
+  const deleteQuiz = async (quizId: string) => {
+    await api.delete(`/api/quizzes/${quizId}`);
+    setQuizzes(prev => prev.filter(q => q.id !== quizId));
   };
 
-  const deleteAnnouncement = async (annId: string) => {
-    try {
-      await api.delete(`/api/announcements/${annId}`);
-      setAnnouncements(prev => prev.filter(a => a.id !== annId));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete announcement');
-      throw err;
-    }
+  const updateQuiz = async (quizId: string, data: Partial<QuizFormData>) => {
+    await api.patch(`/api/quizzes/${quizId}`, data);
+    if (currentUser) await fetchMainData(currentUser.role, currentUser.id);
   };
 
+  // ------------------------------------------------------------------
+  // AI parsing
+  // ------------------------------------------------------------------
+  const parseQuestionsWithAI = async (rawText: string, subject: string): Promise<ParsedQuestion[]> => {
+    const result = await api.post('/api/ai/parse-questions', { rawText, subject });
+    return result.questions;
+  };
+
+  // ------------------------------------------------------------------
+  // Quiz taking
+  // ------------------------------------------------------------------
+  const startQuiz = async (quizId: string) => {
+    return await api.post('/api/attempts', { quizId });
+  };
+
+  const saveResponse = async (
+    attemptId: string,
+    questionId: string,
+    selectedAnswer: string | null,
+    flaggedForReview: boolean,
+    timeSpent: number
+  ) => {
+    return await api.patch(`/api/attempts/${attemptId}/response`, {
+      questionId, selectedAnswer, flaggedForReview, timeSpent
+    });
+  };
+
+  const submitQuiz = async (attemptId: string, timeTaken: number) => {
+    const result = await api.post(`/api/attempts/${attemptId}/submit`, { timeTaken });
+    if (currentUser) await fetchMainData(currentUser.role, currentUser.id);
+    return result;
+  };
+
+  const getAttemptDetail = async (attemptId: string) => {
+    return await api.get(`/api/attempts/${attemptId}/detail`);
+  };
+
+  // ------------------------------------------------------------------
+  // AI Explanation (cached)
+  // ------------------------------------------------------------------
+  const getExplanation = async (questionId: string): Promise<AIExplanation> => {
+    const result = await api.get(`/api/explanations/${questionId}`);
+    return result.explanation;
+  };
+
+  // ------------------------------------------------------------------
+  // Study Coach
+  // ------------------------------------------------------------------
+  const getStudyCoach = async (userId: string): Promise<StudyCoach> => {
+    const result = await api.get(`/api/analytics/study-coach/${userId}`);
+    return result.studyCoach;
+  };
+
+  // ------------------------------------------------------------------
+  // Notifications
+  // ------------------------------------------------------------------
   const markNotificationAsRead = async (notifId: string) => {
-    try {
-      await api.patch(`/api/notifications/${notifId}/read`);
-      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
-    } catch (err: any) {
-      console.error('Failed to mark notification as read:', err);
-    }
+    await api.patch(`/api/notifications/${notifId}/read`);
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
   };
 
   const markAllNotificationsAsRead = async () => {
-    try {
-      await api.patch('/api/notifications/read-all');
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (err: any) {
-      console.error('Failed to mark all notifications read:', err);
-    }
+    await api.patch('/api/notifications/read-all');
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const clearNotifications = async () => {
-    try {
-      await api.delete('/api/notifications');
-      setNotifications([]);
-    } catch (err: any) {
-      console.error('Failed to clear notifications:', err);
-    }
+    await api.delete('/api/notifications');
+    setNotifications([]);
   };
 
-  const postVideoContribution = async (contribData: {
-    topic: string;
-    title: string;
-    videoUrl: string;
-    description: string;
-  }) => {
-    try {
-      const newContrib = await api.post('/api/contributions/video', contribData);
-      setContributions(prev => [newContrib, ...prev]);
-    } catch (err: any) {
-      setError(err.message || 'Failed to post video contribution');
-      throw err;
-    }
-  };
+  const refetch = () => currentUser && fetchMainData(currentUser.role, currentUser.id);
 
   return {
-    currentUser,
-    users,
-    problems,
-    submissions,
-    announcements,
-    notifications,
-    contributions,
-    loading,
-    authChecking,
-    error,
-    login,
-    register,
-    logout,
-    approveUser,
-    rejectUser,
-    toggleAdminRole,
-    removeUser,
-    publishChallenge,
-    submitSolution,
-    postAnnouncement,
-    deleteAnnouncement,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    clearNotifications,
-    postVideoContribution,
-    refetch: () => currentUser && fetchMainData(currentUser.role),
+    // State
+    currentUser, users, quizzes, myAttempts, notifications,
+    leaderboard, studentAnalytics, adminAnalytics,
+    loading, authChecking, error,
+    // Auth
+    login, register, logout,
+    // User management
+    approveUser, rejectUser, toggleAdminRole, removeUser,
+    // Quiz management
+    createQuiz, publishQuiz, deleteQuiz, updateQuiz,
+    // AI
+    parseQuestionsWithAI, getExplanation, getStudyCoach,
+    // Quiz taking
+    startQuiz, saveResponse, submitQuiz, getAttemptDetail,
+    // Notifications
+    markNotificationAsRead, markAllNotificationsAsRead, clearNotifications,
+    // Util
+    refetch,
   };
 }
