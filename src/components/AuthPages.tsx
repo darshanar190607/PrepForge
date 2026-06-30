@@ -11,8 +11,8 @@ export default function AuthPages({ onLogin, onRegisterRequest }: AuthPagesProps
   const [showPass, setShowPass] = useState(false);
 
   // Login
-  const [loginEmail, setLoginEmail] = useState('darshan.ar2024cce@sece.ac.in');
-  const [loginPassword, setLoginPassword] = useState('admin123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -133,12 +133,6 @@ export default function AuthPages({ onLogin, onRegisterRequest }: AuthPagesProps
                 </button>
               </p>
 
-              {/* Demo hint */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 space-y-1">
-                <div className="font-semibold text-slate-700">Demo credentials</div>
-                <div>Admin: <span className="font-mono text-slate-900">darshan.ar2024cce@sece.ac.in</span> / <span className="font-mono">admin123</span></div>
-                <div>Student: <span className="font-mono text-slate-900">priya.patel@student.edu</span> / <span className="font-mono">password123</span></div>
-              </div>
             </div>
           ) : (
             /* === REGISTER === */
