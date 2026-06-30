@@ -2,6 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config(); // loads .env from cwd if not already loaded
 
+import path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -946,6 +947,25 @@ app.delete('/api/notifications', authenticateToken, async (req: AuthenticatedReq
     res.json({ message: 'Notifications cleared' });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Internal server error' }); }
 });
+
+// -------------------------------------------------------
+// SERVE FRONTEND (production)
+// -------------------------------------------------------
+import { fileURLToPath } from 'url';
+import fsModule from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname_server = path.dirname(__filename);
+const distPath = path.join(__dirname_server, 'dist');
+
+if (fsModule.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  // SPA catch-all: send index.html for any unknown route
+  app.get('*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+  console.log(`📦 Serving frontend from ${distPath}`);
+}
 
 // -------------------------------------------------------
 // START SERVER
