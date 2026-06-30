@@ -217,7 +217,7 @@ export default function App() {
               <BookOpen size={16} className="text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight">PrepForge</h2>
+              <h2 className="text-sm font-bold text-white tracking-tight">PrepForge CCE</h2>
               <span className="text-[9px] text-slate-500 font-mono tracking-widest uppercase">
                 {isAdmin ? 'Admin' : 'Student'} Portal
               </span>

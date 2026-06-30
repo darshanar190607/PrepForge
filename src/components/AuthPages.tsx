@@ -62,7 +62,7 @@ export default function AuthPages({ onLogin, onRegisterRequest }: AuthPagesProps
           <BookOpen size={22} className="text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">PrepForge</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">PrepForge CCE</h1>
           <span className="text-[10px] text-indigo-500 font-semibold tracking-widest uppercase font-mono">Quiz & Learning Platform</span>
         </div>
       </div>
