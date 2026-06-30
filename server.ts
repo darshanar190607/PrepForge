@@ -951,12 +951,9 @@ app.delete('/api/notifications', authenticateToken, async (req: AuthenticatedReq
 // -------------------------------------------------------
 // SERVE FRONTEND (production)
 // -------------------------------------------------------
-import { fileURLToPath } from 'url';
 import fsModule from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname_server = path.dirname(__filename);
-const distPath = path.join(__dirname_server, 'dist');
+const distPath = path.join(process.cwd(), 'dist');
 
 if (fsModule.existsSync(distPath)) {
   app.use(express.static(distPath));

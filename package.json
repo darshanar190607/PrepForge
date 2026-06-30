@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
-    "build:server": "esbuild server.ts --bundle --platform=node --target=node18 --format=esm --outfile=server.js --external:pg-native",
+    "build:server": "esbuild server.ts --bundle --platform=node --target=node18 --format=cjs --outfile=server.js --external:pg-native",
     "build:all": "npm run build && npm run build:server",
     "start": "node server.js",
     "preview": "vite preview",
