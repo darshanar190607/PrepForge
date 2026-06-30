@@ -17,7 +17,7 @@ import StudentAnalyticsPage from './components/StudentAnalyticsPage';
 
 import {
   BookOpen, LayoutDashboard, Award, Bell, Users, BarChart3,
-  Plus, LogOut, Hammer, X, ChevronDown
+  Plus, LogOut, X, Menu, ChevronRight
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -53,6 +53,7 @@ export default function App() {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuizState | null>(null);
   const [resultState, setResultState] = useState<ResultState | null>(null);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [startingQuiz, setStartingQuiz] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -82,7 +83,7 @@ export default function App() {
         <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-6 shadow-sm overflow-hidden relative">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 to-indigo-500" />
           <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto">
-            <span className="text-2xl">⏳</span>
+            <span className="text-2xl">&#x23F3;</span>
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Awaiting Approval</h2>
@@ -113,7 +114,6 @@ export default function App() {
         onSaveResponse={saveResponse}
         onSubmit={async (attemptId, timeTaken) => {
           const result = await submitQuiz(attemptId, timeTaken);
-          // Fetch the full attempt detail for results page
           const detail = await getAttemptDetail(attemptId);
           setResultState({
             attempt: detail.attempt,
@@ -127,7 +127,7 @@ export default function App() {
     );
   }
 
-  // ---- Quiz Result (full content) ----
+  // ---- Quiz Result ----
   if (resultState) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -175,42 +175,50 @@ export default function App() {
     }
   };
 
-  // ---- Sidebar nav config ----
+  // ---- Nav config ----
   const studentNav = [
-    { id: 'dashboard' as Tab, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard' as Tab, label: 'Home', icon: LayoutDashboard },
     { id: 'quizzes' as Tab, label: 'Quizzes', icon: BookOpen },
-    { id: 'leaderboard' as Tab, label: 'Leaderboard', icon: Award },
-    { id: 'analytics' as Tab, label: 'My Analytics', icon: BarChart3 },
-    { id: 'notifications' as Tab, label: 'Notifications', icon: Bell, badge: unreadCount },
+    { id: 'leaderboard' as Tab, label: 'Ranks', icon: Award },
+    { id: 'analytics' as Tab, label: 'Analytics', icon: BarChart3 },
+    { id: 'notifications' as Tab, label: 'Alerts', icon: Bell, badge: unreadCount },
   ];
 
   const adminNav = [
-    { id: 'dashboard' as Tab, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'quizzes' as Tab, label: 'Quiz Library', icon: BookOpen },
-    { id: 'create-quiz' as Tab, label: 'Create Quiz', icon: Plus },
-    { id: 'leaderboard' as Tab, label: 'Leaderboard', icon: Award },
-    { id: 'analytics' as Tab, label: 'Analytics', icon: BarChart3 },
+    { id: 'dashboard' as Tab, label: 'Home', icon: LayoutDashboard },
+    { id: 'quizzes' as Tab, label: 'Quizzes', icon: BookOpen },
+    { id: 'create-quiz' as Tab, label: 'Create', icon: Plus },
+    { id: 'leaderboard' as Tab, label: 'Ranks', icon: Award },
+    { id: 'analytics' as Tab, label: 'Stats', icon: BarChart3 },
     { id: 'members' as Tab, label: 'Students', icon: Users },
-    { id: 'notifications' as Tab, label: 'Notifications', icon: Bell, badge: unreadCount },
+    { id: 'notifications' as Tab, label: 'Alerts', icon: Bell, badge: unreadCount },
   ];
 
   const navItems = isAdmin ? adminNav : studentNav;
+  // On mobile: show first 4 + "More" for admin; all 5 for student
+  const bottomNavItems = isAdmin ? navItems.slice(0, 4) : navItems;
+  const moreItems = isAdmin ? navItems.slice(4) : [];
 
   const PAGE_TITLES: Record<Tab, string> = {
     dashboard: isAdmin ? 'Admin Dashboard' : 'My Dashboard',
     quizzes: 'Quiz Library',
     'create-quiz': 'Create Quiz',
-    leaderboard: 'Department Leaderboard',
+    leaderboard: 'Leaderboard',
     notifications: 'Notifications',
     analytics: isAdmin ? 'Analytics' : 'My Analytics',
     members: 'Student Management',
   };
 
+  const navigate = (tab: Tab) => {
+    setActiveTab(tab);
+    setShowMobileMenu(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex" id="prepforge-app">
-      {/* ---- SIDEBAR ---- */}
+
+      {/* ======== DESKTOP SIDEBAR ======== */}
       <aside className="w-56 bg-slate-900 text-slate-300 hidden md:flex flex-col shrink-0" id="sidebar">
-        {/* Logo */}
         <div className="px-5 py-5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
@@ -224,34 +232,22 @@ export default function App() {
             </div>
           </div>
         </div>
-
-        {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           {navItems.map(({ id, label, icon: Icon, badge }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
+            <button key={id} onClick={() => setActiveTab(id)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition cursor-pointer ${
-                activeTab === id
-                  ? 'bg-indigo-600 text-white font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800 font-medium'
-              }`}
-              id={`nav-${id}`}
-            >
+                activeTab === id ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-slate-800 font-medium'
+              }`} id={`nav-${id}`}>
               <div className="flex items-center gap-2.5">
                 <Icon size={15} />
                 <span>{label}</span>
               </div>
               {badge && badge > 0 && (
-                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
-                  {badge}
-                </span>
+                <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{badge}</span>
               )}
             </button>
           ))}
         </nav>
-
-        {/* User footer */}
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center gap-2.5 mb-3">
             <img src={currentUser.avatarUrl} alt={currentUser.name}
@@ -269,44 +265,78 @@ export default function App() {
         </div>
       </aside>
 
-      {/* ---- MAIN ---- */}
+      {/* ======== MAIN CONTENT AREA ======== */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0" id="topbar">
-          <h1 className="text-sm font-bold text-slate-900">{PAGE_TITLES[activeTab]}</h1>
 
-          <div className="flex items-center gap-3">
-            {startingQuiz && (
-              <span className="text-xs text-indigo-600 font-semibold animate-pulse">Starting quiz...</span>
-            )}
-
-            {/* Notification bell */}
+        {/* === MOBILE HEADER === */}
+        <header className="md:hidden h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <BookOpen size={14} className="text-white" />
+            </div>
+            <span className="text-sm font-bold text-slate-900 truncate max-w-[160px]">{PAGE_TITLES[activeTab]}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {startingQuiz && <span className="text-[10px] text-indigo-600 font-semibold animate-pulse">Starting...</span>}
+            {/* Bell */}
             <div className="relative">
-              <button
-                onClick={() => { setShowNotifMenu(!showNotifMenu); if (!showNotifMenu) markAllNotificationsAsRead(); }}
-                className="relative p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                id="notif-bell">
+              <button onClick={() => { setShowNotifMenu(!showNotifMenu); if (!showNotifMenu) markAllNotificationsAsRead(); }}
+                className="relative p-2 text-slate-400 hover:text-slate-700 rounded-lg transition cursor-pointer">
                 <Bell size={18} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-                )}
+                {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />}
               </button>
-
               <AnimatePresence>
                 {showNotifMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden"
-                    id="notif-dropdown"
-                  >
+                    className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
                       <span className="text-xs font-bold text-slate-700">Notifications</span>
-                      <button onClick={() => setShowNotifMenu(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                        <X size={14} />
-                      </button>
+                      <button onClick={() => setShowNotifMenu(false)} className="text-slate-400 cursor-pointer"><X size={14} /></button>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                      {notifications.length === 0 ? (
+                        <p className="p-6 text-center text-xs text-slate-400">No notifications</p>
+                      ) : notifications.slice(0, 8).map(n => (
+                        <div key={n.id} className={`px-4 py-3 ${!n.read ? 'bg-indigo-50/50' : ''}`}>
+                          <p className="text-xs font-semibold text-slate-900">{n.title}</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{n.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
+                      <button onClick={() => { navigate('notifications'); setShowNotifMenu(false); }}
+                        className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer">View all</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* Avatar */}
+            <img src={currentUser.avatarUrl} alt={currentUser.name}
+              className="w-7 h-7 rounded-full object-cover border border-slate-200" />
+          </div>
+        </header>
+
+        {/* === DESKTOP HEADER === */}
+        <header className="hidden md:flex h-14 bg-white border-b border-slate-200 items-center justify-between px-6 shrink-0" id="topbar">
+          <h1 className="text-sm font-bold text-slate-900">{PAGE_TITLES[activeTab]}</h1>
+          <div className="flex items-center gap-3">
+            {startingQuiz && <span className="text-xs text-indigo-600 font-semibold animate-pulse">Starting quiz...</span>}
+            <div className="relative">
+              <button onClick={() => { setShowNotifMenu(!showNotifMenu); if (!showNotifMenu) markAllNotificationsAsRead(); }}
+                className="relative p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer" id="notif-bell">
+                <Bell size={18} />
+                {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />}
+              </button>
+              <AnimatePresence>
+                {showNotifMenu && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden" id="notif-dropdown">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+                      <span className="text-xs font-bold text-slate-700">Notifications</span>
+                      <button onClick={() => setShowNotifMenu(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X size={14} /></button>
                     </div>
                     <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
                       {notifications.length === 0 ? (
@@ -320,91 +350,37 @@ export default function App() {
                     </div>
                     <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
                       <button onClick={() => { setActiveTab('notifications'); setShowNotifMenu(false); }}
-                        className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer">
-                        View all notifications
-                      </button>
+                        className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer">View all notifications</button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-
-            {/* Mobile nav */}
-            <div className="flex md:hidden gap-1">
-              {navItems.slice(0, 4).map(({ id, icon: Icon }) => (
-                <button key={id} onClick={() => setActiveTab(id)}
-                  className={`p-2 rounded-lg transition cursor-pointer ${activeTab === id ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-700'}`}>
-                  <Icon size={16} />
-                </button>
-              ))}
-            </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6" id="main-content">
+        {/* === PAGE CONTENT === */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6" id="main-content">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
-            >
-              {/* Dashboard */}
+            <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
               {activeTab === 'dashboard' && isAdmin && adminAnalytics && (
-                <AdminDashboard
-                  users={users}
-                  quizzes={quizzes}
-                  adminAnalytics={adminAnalytics}
-                  onNavigate={t => setActiveTab(t as Tab)}
-                />
+                <AdminDashboard users={users} quizzes={quizzes} adminAnalytics={adminAnalytics} onNavigate={t => setActiveTab(t as Tab)} />
               )}
               {activeTab === 'dashboard' && !isAdmin && (
-                <StudentDashboard
-                  user={currentUser}
-                  quizzes={quizzes}
-                  myAttempts={myAttempts}
-                  leaderboard={leaderboard}
-                  studentAnalytics={studentAnalytics}
-                  onStartQuiz={handleStartQuiz}
-                  onViewResults={handleViewResults}
-                  onNavigate={t => setActiveTab(t as Tab)}
-                />
+                <StudentDashboard user={currentUser} quizzes={quizzes} myAttempts={myAttempts} leaderboard={leaderboard}
+                  studentAnalytics={studentAnalytics} onStartQuiz={handleStartQuiz} onViewResults={handleViewResults} onNavigate={t => setActiveTab(t as Tab)} />
               )}
-
-              {/* Quiz Library */}
               {activeTab === 'quizzes' && (
-                <QuizList
-                  quizzes={quizzes}
-                  myAttempts={myAttempts}
-                  currentUserId={currentUser.id}
-                  isAdmin={isAdmin}
-                  onStartQuiz={handleStartQuiz}
-                  onViewResults={handleViewResults}
-                  onNavigateCreate={() => setActiveTab('create-quiz')}
-                />
+                <QuizList quizzes={quizzes} myAttempts={myAttempts} currentUserId={currentUser.id} isAdmin={isAdmin}
+                  onStartQuiz={handleStartQuiz} onViewResults={handleViewResults} onNavigateCreate={() => setActiveTab('create-quiz')} />
               )}
-
-              {/* Create Quiz (admin) */}
               {activeTab === 'create-quiz' && isAdmin && (
-                <QuizCreator
-                  onCreateQuiz={createQuiz}
-                  onPublishQuiz={publishQuiz}
-                  onParseQuestions={parseQuestionsWithAI}
-                  onClose={() => setActiveTab('dashboard')}
-                />
+                <QuizCreator onCreateQuiz={createQuiz} onPublishQuiz={publishQuiz} onParseQuestions={parseQuestionsWithAI} onClose={() => setActiveTab('dashboard')} />
               )}
-
-              {/* Leaderboard */}
               {activeTab === 'leaderboard' && (
-                <Leaderboard
-                  leaderboard={leaderboard}
-                  currentUser={currentUser}
-                />
+                <Leaderboard leaderboard={leaderboard} currentUser={currentUser} />
               )}
-
-              {/* Analytics */}
               {activeTab === 'analytics' && isAdmin && adminAnalytics && (
                 <AdminAnalyticsPage analytics={adminAnalytics} />
               )}
@@ -416,29 +392,14 @@ export default function App() {
                   <p className="text-sm">Complete at least one quiz to see your analytics.</p>
                 </div>
               )}
-
-              {/* Members (admin) */}
               {activeTab === 'members' && isAdmin && (
-                <MemberManagement
-                  users={users}
-                  onApproveUser={approveUser}
-                  onRejectUser={rejectUser}
-                  onToggleAdminRole={toggleAdminRole}
-                  onRemoveUser={removeUser}
-                />
+                <MemberManagement users={users} onApproveUser={approveUser} onRejectUser={rejectUser}
+                  onToggleAdminRole={toggleAdminRole} onRemoveUser={removeUser} />
               )}
-
-              {/* Notifications */}
               {activeTab === 'notifications' && (
-                <NotificationsPage
-                  notifications={notifications}
-                  onMarkAsRead={markNotificationAsRead}
-                  onMarkAllAsRead={markAllNotificationsAsRead}
-                  onClearNotifications={clearNotifications}
-                />
+                <NotificationsPage notifications={notifications} onMarkAsRead={markNotificationAsRead}
+                  onMarkAllAsRead={markAllNotificationsAsRead} onClearNotifications={clearNotifications} />
               )}
-
-              {/* Loading state */}
               {loading && activeTab === 'dashboard' && (
                 <div className="flex items-center justify-center py-20 text-slate-400">
                   <div className="w-6 h-6 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin mr-3" />
@@ -449,6 +410,102 @@ export default function App() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* ======== MOBILE BOTTOM NAV ======== */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40" id="bottom-nav"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex items-stretch">
+          {bottomNavItems.map(({ id, label, icon: Icon, badge }) => (
+            <button key={id} onClick={() => navigate(id)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition cursor-pointer relative ${
+                activeTab === id ? 'text-indigo-600' : 'text-slate-400'
+              }`}>
+              {activeTab === id && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-indigo-600 rounded-b-full" />
+              )}
+              <div className="relative">
+                <Icon size={20} strokeWidth={activeTab === id ? 2.5 : 1.8} />
+                {badge && badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[8px] font-bold px-1 rounded-full min-w-[14px] text-center leading-tight">
+                    {badge}
+                  </span>
+                )}
+              </div>
+              <span className={`text-[9px] font-semibold tracking-wide ${activeTab === id ? 'text-indigo-600' : 'text-slate-400'}`}>
+                {label}
+              </span>
+            </button>
+          ))}
+
+          {/* "More" overflow for admin */}
+          {moreItems.length > 0 && (
+            <button onClick={() => setShowMobileMenu(true)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition cursor-pointer ${
+                moreItems.some(i => i.id === activeTab) ? 'text-indigo-600' : 'text-slate-400'
+              }`}>
+              <Menu size={20} strokeWidth={1.8} />
+              <span className="text-[9px] font-semibold tracking-wide">More</span>
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* ======== MOBILE "MORE" BOTTOM SHEET ======== */}
+      <AnimatePresence>
+        {showMobileMenu && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 md:hidden"
+              onClick={() => setShowMobileMenu(false)} />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 md:hidden overflow-hidden"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <span className="text-sm font-bold text-slate-900">More</span>
+                <button onClick={() => setShowMobileMenu(false)} className="text-slate-400 cursor-pointer"><X size={18} /></button>
+              </div>
+              <div className="p-3 space-y-1">
+                {moreItems.map(({ id, label, icon: Icon, badge }) => (
+                  <button key={id} onClick={() => navigate(id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition cursor-pointer ${
+                      activeTab === id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <Icon size={18} />
+                      <span className="text-sm font-medium">{label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {badge && badge > 0 && (
+                        <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{badge}</span>
+                      )}
+                      <ChevronRight size={14} className="text-slate-400" />
+                    </div>
+                  </button>
+                ))}
+                <div className="mt-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <img src={currentUser.avatarUrl} alt={currentUser.name}
+                      className="w-9 h-9 rounded-full object-cover border border-slate-200" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{currentUser.name}</p>
+                      <p className="text-xs text-slate-400 truncate">{currentUser.email}</p>
+                    </div>
+                  </div>
+                  <button onClick={logout}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer">
+                    <LogOut size={18} />
+                    <span className="text-sm font-medium">Sign Out</span>
+                  </button>
+                </div>
+              </div>
+              <div className="h-4" />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
